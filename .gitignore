@@ -109,4 +109,6 @@ temp/
 
 # End of https://www.gitignore.io/api/node
 
+# Custom
 config/config.secret.js
+nohup.out

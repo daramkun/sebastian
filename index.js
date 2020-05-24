@@ -3,6 +3,7 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const fetch = require('node-fetch');
+const { Worker } = require('worker_threads');
 
 const config = require('./config/config.secret.js');
 
@@ -19,6 +20,20 @@ async function get_project_id(project_name)
 	if(searched == null || searched == 'undefined')
 		return -1;
 	return searched.id;
+}
+
+async function get_project_due_issues(project_name)
+{
+	var project_id = get_project_id(project_name);
+
+	var list = await get_webpage_to_json(`${config.gitlab.gitlab_api_address}/projects/${project_id}/issues?private_token=${config.gitlab.access_token}&state=opened`);
+	var dues = list.filter((value) => {
+		let today = new Date().getDate();
+		let dueday = new Date(value.due_date).getDate();
+		return (today >= dueday);
+	});
+
+	return dues;
 }
 
 async function process_issue(channel, token)
@@ -181,10 +196,38 @@ function process_usage(channel)
 			{ name: '$명령 이슈 <프로젝트이름> <이슈번호>', value: '해당 프로젝트의 이슈 페이지를 가져옵니다.' },
 			{ name: '$명령 MR <프로젝트이름> <MR번호>', value: '해당 프로젝트의 머지 리퀘스트 페이지를 가져옵니다.' },
 			{ name: '이슈 경로 또는 머지 리퀘스트 경로', value: '해당 이슈 또는 머지 리퀘스트의 내용을 가져옵니다.' },
-			{ name: '활성이슈 <프로젝트이름>', value: '해당 프로젝트에 열려 있는 이슈 목록을 가져옵니다.' },
-			{ name: '마감이슈 <프로젝트이름>', value: '해당 프로젝트에 열려 있는 이슈 중 마감 기한이 다 된 목록을 가져옵니다.' }
+			{ name: '$명령 활성이슈 <프로젝트이름>', value: '해당 프로젝트에 열려 있는 이슈 목록을 가져옵니다.' },
+			{ name: '$명령 마감이슈 <프로젝트이름>', value: '해당 프로젝트에 열려 있는 이슈 중 마감 기한이 다 된 목록을 가져옵니다.' }
 		);
 	channel.send(embed);
+}
+
+function do_period_action()
+{
+	const now = new Date();
+	client.setTimeout(() => {
+		client.setInterval(() => {
+			config.check_due_in_period.forEach(
+				(project_name) => {
+					var issues = get_project_due_issues(project_name);
+					if(issues.length > 0) {
+						var embed = new Discord.MessageEmbed()
+							.setTitle(`${project_name} 프로젝트의 오늘 마감 또는 마감기한이 다 한 이슈입니다.`)
+							.setDescription('부디 마감일을 지켜주십시오.')
+							.setColor(0xdd0000);
+						issues.forEach(value => {
+							embed.addFields(
+								{ name: '#', value: `[${value.iid}](${config.gitlab.project_root}${project_name}/-/issues/${value.iid})`, inline: true },
+								{ name: '제목', value: value.title, inline: true },
+								{ name: '마감일', value: value.due_date, inline: true }
+							);
+						});
+						client.channels.resolve(config.soliloquy_channel_id).send(embed);
+					}
+				}
+			)
+		}, 24 * 60 * 60 * 1000);
+	}, (-now + now.setHours(18, 0, 0, 0)));
 }
 
 process.on('SIGINT', () => {
@@ -198,16 +241,20 @@ process.on('uncaughtException', err => {
 client.on('ready', async () => {
 	console.log(`세바스찬, ${client.user.tag} 명의로 대기 중.`);
 	client.user.setStatus('available');
-	client.user.setActivity('사용법은 $사용법 을 채팅창에 입력하세요.');
+	client.user.setActivity('사용법은 ```$사용법```을 채팅창에 입력하세요.');
 });
 
 client.on('message', async message =>
 {
+	const url_pattern = new RegExp(`${config.gitlab.project_root}([a-zA-Z가-힣0-9_\\-]+)/-/((issues)|(merge_requests))/([0-9]+)`);
+	const issue_command_pattern = new RegExp(/([a-zA-Z가-힣0-9_\\-]+) #([0-9]+)/);
+	const mr_command_pattern = new RegExp(/([a-zA-Z가-힣0-9_\\-]+) !([0-9]+)/);
+		
 	if(message.content == "!ping")
 		message.reply("!pong");
 	else if(message.content.indexOf('$명령 ') == 0)
 	{
-		var order = message.content.substring(4);
+		const order = message.content.substring(4);
 		if (order.indexOf('이슈 ') == 0)
 			await process_issue(message.channel, order.split(' '));
 		else if (order.indexOf('MR ') == 0)
@@ -216,22 +263,32 @@ client.on('message', async message =>
 			await process_issues_list(message.channel, order.split(' '));
 		else if(order.indexOf('마감이슈 ') == 0)
 			await process_due_issues_list(message.channel, order.split(' '));
+		else if(issue_command_pattern.test(order))
+		{
+			const match = order.match(issue_command_pattern);
+			await process_issue(message.channel, [null, match[1], match[2]]);
+		}
+		else if(mr_command_pattern.test(order))
+		{
+			const match = order.match(mr_command_pattern);
+			await process_merge_request(message.channel, [null, match[1], match[2]]);
+		}
 		else
 		{
 			message.channel.send('잘못된 명령 사용법입니다.');
+			message.channel.send('$사용법');
 		}
 	}
 	else if(message.content.indexOf(config.gitlab.project_root) >= 0)
 	{
-		const re = new RegExp(`${config.gitlab.project_root}([a-zA-Z가-힣0-9_\\-]+)/-/((issues)|(merge_requests))/([0-9]+)`);
-		var match = message.content.match(re);
+		var match = message.content.match(url_pattern);
 
 		if(match != null && match != 'undefined')
 		{
 			if(match[2] == 'issues')
-				process_issue(message.channel, [null, match[1], match[5]]);
+				await process_issue(message.channel, [null, match[1], match[5]]);
 			else if(match[3] == 'merge_requests')
-				process_merge_request(message.channel, [null, match[1], match[5]]);
+				await process_merge_request(message.channel, [null, match[1], match[5]]);
 		}
 	}
 	else if(message.content.indexOf('$사용법') == 0)
@@ -239,5 +296,7 @@ client.on('message', async message =>
 		process_usage(message.channel);
 	}
 });
+
+do_period_action();
 
 client.login(config.discord_token);
