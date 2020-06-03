@@ -9,5 +9,7 @@ module.exports = {
     },
     check_due_in_period: [
         
-    ]
+    ],
+    due_from_days: 7,
+    openweathermap_api_key: "<오픈웨더맵 API Key>"
 }

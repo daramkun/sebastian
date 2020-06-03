@@ -4,6 +4,8 @@
   "description": "Team Hazelnut Butler Bot for Discord",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "serve": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -11,5 +13,8 @@
   "dependencies": {
     "discord.js": "^12.2.0",
     "node-fetch": "^2.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
   }
 }
