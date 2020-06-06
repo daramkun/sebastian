@@ -619,10 +619,9 @@ client.on('message', async message =>
 		}
 		else
 		{
-			var embed = new Discord.MessageEmbed()
-				.setTitle(`주인님 중 한 분이 다음과 같은 공지를 남겼습니다. 💁‍♂️`)
-				.setDescription(message.content.substr(4, message.content.length - 4));
+			var embed = new Discord.MessageEmbed().setTitle(`주인님 중 한 분이 다음과 같은 공지를 남겼습니다. 💁‍♂️`);
 			global.messagingChannel.send(embed);
+			global.messagingChannel.send(message.content.substr(4, message.content.length - 4));
 
 			console.log(`[${new Date()}] ${message.author.tag}: ${message.content}`);
 		}
