@@ -493,6 +493,7 @@ function process_usage(channel)
 			{ name: '$명령 날씨 <도시>', value: '현재 날씨를 가져옵니다. 도시가 생략되면 서울 기준.' },
 			{ name: '$등록', value: '세바스찬이 직접 메시지를 전달하는 채널을 등록합니다. 이전에 등록한 채널 정보는 사라집니다.' },
 			{ name: '$공지 <보낼 메시지>', value: '서버에 공지 형식으로 메시지를 전달합니다.' },
+			{ name: '던!', value: '해당 메시지에 DONE 반응이 추가됩니다.' },
 			{ name: '이슈 경로 또는 머지 리퀘스트 경로', value: '해당 이슈 또는 머지 리퀘스트의 내용을 가져옵니다.' },
 		);
 	channel.send(embed);
@@ -598,15 +599,32 @@ client.on('message', async message =>
 
 		do_period_action();
 	}
+	else if(message.content.trim() == '던!')
+	{
+		const emoji = message.guild.emojis.cache.find(emoji => emoji.name === 'done');
+		if(emoji != null)
+			message.react(emoji);
+	}
+	else if(message.content.trim() == '던?')
+	{
+		const emoji = message.guild.emojis.cache.find(emoji => emoji.name === 'done');
+		if(emoji != null)
+			message.react(emoji).then(() => message.react('❓'));
+	}
 	else if(message.content.indexOf('$공지 ') == 0)
 	{
 		if(typeof global.messagingChannel === 'undefined' || global.messagingChannel == null)
 		{
-			message.channel.send('공지가 나갈 채널을 등록해주세요.');
+			message.channel.send('공지가 나갈 채널을 등록해주세요. 🤦‍♂️');
 		}
 		else
 		{
-			global.messagingChannel.send(message.content.substr(4, message.content.length - 4));
+			var embed = new Discord.MessageEmbed()
+				.setTitle(`주인님 중 한 분이 다음과 같은 공지를 남겼습니다. 💁‍♂️`)
+				.setDescription(message.content.substr(4, message.content.length - 4));
+			global.messagingChannel.send(embed);
+
+			console.log(`[${new Date()}] ${message.author.tag}: ${message.content}`);
 		}
 	}
 	else if(message.content.indexOf(config.gitlab.project_root) >= 0)
