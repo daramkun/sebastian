@@ -7,12 +7,11 @@ const fetch = require('node-fetch');
 const config = require('./config/config.secret.js');
 const city_to_coord = require('./data/city_to_coord.js');
 
+// 넘치는 텍스트를 자른다
 function get_wrapped_text(text, length = 8)
 {
 	if(text != null && text.length > length)
-	{
 		text = text.substring(0, length) + '...';
-	}
 	return text;
 }
 
@@ -491,7 +490,9 @@ function process_usage(channel)
 			{ name: '$명령 닫힌이슈 <프로젝트이름>', value: '해당 프로젝트에 닫혀 있는 이슈 목록을 가져옵니다.' },
 			{ name: '$명령 마감이슈 <프로젝트이름>', value: '해당 프로젝트에 열려 있는 이슈 중 마감 기한이 다 된 목록을 가져옵니다.' },
 			{ name: '$명령 위키목록 <프로젝트이름>', value: '해당 프로젝트에 작성된 위키 목록을 가져옵니다.' },
-			{ name: '$명령 날씨 <도시>', value: '현재 날씨를 가져옵니다. 도시가 생략되면 서울 기준.'},
+			{ name: '$명령 날씨 <도시>', value: '현재 날씨를 가져옵니다. 도시가 생략되면 서울 기준.' },
+			{ name: '$등록', value: '세바스찬이 직접 메시지를 전달하는 채널을 등록합니다. 이전에 등록한 채널 정보는 사라집니다.' },
+			{ name: '$공지 <보낼 메시지>', value: '서버에 공지 형식으로 메시지를 전달합니다.' },
 			{ name: '이슈 경로 또는 머지 리퀘스트 경로', value: '해당 이슈 또는 머지 리퀘스트의 내용을 가져옵니다.' },
 		);
 	channel.send(embed);
@@ -517,7 +518,7 @@ function do_period_action()
 								{ name: '마감일', value: value.due_date, inline: true }
 							);
 						});
-						client.channels.resolve(config.soliloquy_channel_id).send(embed);
+						global.messagingChannel.get(config.soliloquy_channel_id).send(embed);
 					}
 				}
 			)
@@ -539,8 +540,6 @@ client.on('ready', async () => {
 	client.user.setActivity('사용법은 "$사용법"을 채팅창에 입력하세요.');
 
 	console.log(`마감 기한 확인 일수: ${config.due_from_days}일 전까지`);
-
-	do_period_action();
 });
 
 client.on('message', async message =>
@@ -549,8 +548,14 @@ client.on('message', async message =>
 	const issue_command_pattern = new RegExp(/([a-zA-Z가-힣0-9_\\-]+) #([0-9]+)/);
 	const mr_command_pattern = new RegExp(/([a-zA-Z가-힣0-9_\\-]+) !([0-9]+)/);
 		
-	if(message.content == "!ping")
-		message.reply("!pong");
+	if(message.content == '!ping')
+	{
+		message.reply('!pong');
+		if(typeof global.messagingChannel === 'undefined' || global.messagingChannel == null)
+		{
+			message.reply('채널 등록이 되어 있지 않으니 **$등록** 명령어를 이용해 채널 등록을 권장 드립니다.');
+		}
+	}
 	else if(message.content.indexOf('$명령 ') == 0)
 	{
 		const order = message.content.substring(4);
@@ -576,13 +581,6 @@ client.on('message', async message =>
 			const match = order.match(mr_command_pattern);
 			await process_merge_request(message.channel, [null, match[1], match[2]]);
 		}
-		else if(order.indexOf('반복메시지 ') == 0)
-			await process_repeat_message(message.channel, order.split(' '));
-		else if(order.indexOf('반복메시지취소 ') == 0)
-		{
-			client.clearInterval()
-			client.clearTimeout()
-		}
 		else if(order.indexOf('날씨') == 0 && config.openweathermap_api_key.length != 0)
 		{
 			await process_weather(message.channel, order.split(' '));
@@ -591,6 +589,24 @@ client.on('message', async message =>
 		{
 			message.channel.send('잘못된 명령 사용법입니다. 🤦‍♂️');
 			message.channel.send('$사용법');
+		}
+	}
+	else if(message.content.trim() == '$등록')
+	{
+		global.messagingChannel = message.channel;
+		message.reply('채널이 등록되었습니다.');
+
+		do_period_action();
+	}
+	else if(message.content.indexOf('$공지 ') == 0)
+	{
+		if(typeof global.messagingChannel === 'undefined' || global.messagingChannel == null)
+		{
+			message.channel.send('공지가 나갈 채널을 등록해주세요.');
+		}
+		else
+		{
+			global.messagingChannel.send(message.content.substr(4, message.content.length - 4));
 		}
 	}
 	else if(message.content.indexOf(config.gitlab.project_root) >= 0)
