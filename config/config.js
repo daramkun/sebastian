@@ -1,6 +1,5 @@
 module.exports = {
     discord_token: "<토큰>",
-    soliloquy_channel_id: "<봇 혼잣말 채널 ID>",
     gitlab: {
         project_root: "<슬래시로 끝나는 깃랩 그룹 또는 개인 경로>",
         gitlab_api_address: "<깃랩 API 경로>",
