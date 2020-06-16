@@ -494,6 +494,8 @@ function process_usage(channel)
 			{ name: '$등록', value: '세바스찬이 직접 메시지를 전달하는 채널을 등록합니다. 이전에 등록한 채널 정보는 사라집니다.' },
 			{ name: '$공지 <보낼 메시지>', value: '서버에 공지 형식으로 메시지를 전달합니다.' },
 			{ name: '던!', value: '해당 메시지에 DONE 반응이 추가됩니다.' },
+			{ name: '다이스! 또는 주사위!', value: '해당 메시지에 1~6 사이의 임의의 숫자가 반응으로 추가됩니다.' },
+			{ name: '가위바위보! <가위/바위/보>', value: '해당 메시지에 가위, 돌, 종이 중 하나가 반응으로 추가됩니다. 가위바위보! 대신 묵찌빠!도 됩니다.' },
 			{ name: '이슈 경로 또는 머지 리퀘스트 경로', value: '해당 이슈 또는 머지 리퀘스트의 내용을 가져옵니다.' },
 		);
 	channel.send(embed);
@@ -611,6 +613,60 @@ client.on('message', async message =>
 		if(emoji != null)
 			message.react(emoji).then(() => message.react('❓'));
 	}
+	else if(message.content.trim() == '다이스!' || message.content.trim() == '주사위!')
+	{
+		const roll = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣'];
+		var selected = Math.round(Math.random() * 5)
+		message.react(roll[selected]);
+	}
+	else if(message.content.indexOf('가위바위보!') == 0 || message.content.indexOf('묵찌빠!') == 0)
+	{
+		const order = message.content.split(' ');
+		if(order.length != 2)
+			message.react('❓');
+		else
+		{
+			const rsp = ['🧱', '✂', '📜'];
+			var selected = Math.round(Math.random() * 2)
+			message.react(rsp[selected]);
+
+			switch(order[1])
+			{
+			case '가위':
+			case '찌':
+				switch (rsp[selected])
+				{
+				case '✂': message.react('😕'); break;
+				case '🧱': message.react('🤣'); break;
+				case '📜': message.react('😥'); break;
+				}
+				break;
+
+			case '바위':
+			case '주먹':
+			case '묵':
+				switch (rsp[selected])
+				{
+				case '🧱': message.react('😕'); break;
+				case '📜': message.react('🤣'); break;
+				case '✂': message.react('😥'); break;
+				}
+				break;
+
+			case '보':
+			case '빠':
+				switch (rsp[selected])
+				{
+				case '📜': message.react('😕'); break;
+				case '✂': message.react('🤣'); break;
+				case '🧱': message.react('😥'); break;
+				}
+				break;
+				
+			default: message.react('🤔'); break;
+			}
+		}
+	}
 	else if(message.content.indexOf('$공지 ') == 0)
 	{
 		if(typeof global.messagingChannel === 'undefined' || global.messagingChannel == null)
@@ -644,4 +700,5 @@ client.on('message', async message =>
 	}
 });
 
+console.log('세바스찬이 깨어납니다.');
 client.login(config.discord_token);
