@@ -476,6 +476,55 @@ async function process_weather(channel, token)
 	channel.send(embed);
 }
 
+function currency_char(rate)
+{
+	switch(rate)
+	{
+		case 'USD':
+		case 'AUD':
+		case 'CAD':
+		case 'ARS':
+			return '＄';
+		case 'CAD':
+			return 'C＄';
+		case 'KRW':
+			return '￦';
+		case 'EUR':
+			return '€';
+		case 'GBP':
+			return '￡';
+		case 'JPY':
+		case 'CNY':
+			return '￥';
+	}
+}
+
+function string_to_currency_float(x)
+{
+	return parseFloat(x.replace(',', ''));
+}
+
+function number_with_commas(x)
+{
+	return Math.ceil(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+async function process_currency_exchange(channel, token)
+{
+	if(token.length < 4)
+	{
+		channel.send('죄송하지만, 정보를 더 주십시오. 🤦‍♂️');
+		channel.send('$사용법');
+		return;
+	}
+
+	var currency_exchange = await get_webpage_to_json(`https://api.exchangeratesapi.io/latest?base=${token[1]}`);
+	var base_currency = currency_exchange.rates[token[2]];
+	var my_currency = string_to_currency_float(token[3]);
+
+	channel.send(`**${token[1]}** __${currency_char(token[1])}${number_with_commas(my_currency)}__을 **${token[2]}**로 변환하면 __${currency_char(token[2])}${number_with_commas(my_currency * base_currency)}__ 입니다. 💁‍♂️`);
+}
+
 function process_usage(channel)
 {
 	var embed = new Discord.MessageEmbed()
@@ -491,6 +540,7 @@ function process_usage(channel)
 			{ name: '$명령 마감이슈 <프로젝트이름>', value: '해당 프로젝트에 열려 있는 이슈 중 마감 기한이 다 된 목록을 가져옵니다.' },
 			{ name: '$명령 위키목록 <프로젝트이름>', value: '해당 프로젝트에 작성된 위키 목록을 가져옵니다.' },
 			{ name: '$명령 날씨 <도시>', value: '현재 날씨를 가져옵니다. 도시가 생략되면 서울 기준.' },
+			{ name: '$명령 환율 <원본화폐> <바뀔화폐> <가격>', value: '해당 화폐의 환율 정보를 가져옵니다.' },
 			{ name: '$등록', value: '세바스찬이 직접 메시지를 전달하는 채널을 등록합니다. 이전에 등록한 채널 정보는 사라집니다.' },
 			{ name: '$공지 <보낼 메시지>', value: '서버에 공지 형식으로 메시지를 전달합니다.' },
 			{ name: '던!', value: '해당 메시지에 DONE 반응이 추가됩니다.' },
@@ -587,6 +637,10 @@ client.on('message', async message =>
 		else if(order.indexOf('날씨') == 0 && config.openweathermap_api_key.length != 0)
 		{
 			await process_weather(message.channel, order.split(' '));
+		}
+		else if(order.indexOf('환율') == 0)
+		{
+			await process_currency_exchange(message.channel, order.split(' '));
 		}
 		else
 		{
