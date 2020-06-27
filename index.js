@@ -543,6 +543,7 @@ function process_usage(channel)
 			{ name: '$명령 환율 <원본화폐> <바뀔화폐> <가격>', value: '해당 화폐의 환율 정보를 가져옵니다.' },
 			{ name: '$등록', value: '세바스찬이 직접 메시지를 전달하는 채널을 등록합니다. 이전에 등록한 채널 정보는 사라집니다.' },
 			{ name: '$공지 <보낼 메시지>', value: '서버에 공지 형식으로 메시지를 전달합니다.' },
+			{ name: '$식사골라줘', value: '임의의 식사 메뉴를 골라줍니다.' },
 			{ name: '던!', value: '해당 메시지에 DONE 반응이 추가됩니다.' },
 			{ name: '다이스! 또는 주사위!', value: '해당 메시지에 1~6 사이의 임의의 숫자가 반응으로 추가됩니다.' },
 			{ name: '가위바위보! <가위/바위/보>', value: '해당 메시지에 가위, 돌, 종이 중 하나가 반응으로 추가됩니다. 가위바위보! 대신 묵찌빠!도 됩니다.' },
@@ -593,6 +594,15 @@ client.on('ready', async () => {
 	client.user.setActivity('사용법은 "$사용법"을 채팅창에 입력하세요.');
 
 	console.log(`마감 기한 확인 일수: ${config.due_from_days}일 전까지`);
+
+	const talk_guild = client.guilds.cache.find(function (key) {
+		return (key == config.talk_channel.guild);
+	});
+	const talk_channel = talk_guild.channels.cache.find(function (key) {
+		return (key == config.talk_channel.channel);
+	});
+
+	global.messagingChannel = talk_channel;
 });
 
 client.on('message', async message =>
@@ -720,6 +730,14 @@ client.on('message', async message =>
 			default: message.react('🤔'); break;
 			}
 		}
+	}
+	else if(message.content.trim() == '$식사골라줘')
+	{
+		var meals = ['치킨🐔', '피자🍕', '파스타🍝', '햄버거🍔', '냉면🍜', '칼국수🍜', '김밥🍙', '떡볶이🍲',
+			'돈까스🍱', '보쌈🥬', '족발🍗', '돼지고기🐷', '소고기🐮', '스테이크🥩', '샤브샤브🍲', '뷔페🍱',
+			'초밥🍣', '회🐟', '라멘🍜', '짜장면/짬뽕🍜', '마라탕🍲', '스키야끼🍲', '게장🦀', '타코🌮',
+			'국밥🍲', '카레/커리🍛', '쌀국수🍜'];
+		message.channel.send(`이 음식이 좋겠군요: 💁‍♂️ ${meals[Math.round(Math.random() * (meals.length - 1))]}`);
 	}
 	else if(message.content.indexOf('$공지 ') == 0)
 	{
